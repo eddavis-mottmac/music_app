@@ -1,0 +1,25 @@
+{
+  "name": "music_app",
+  "version": "1.0.0",
+  "description": "Fyyur\r -----",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eddavis-mottmac/music_app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/eddavis-mottmac/music_app/issues"
+  },
+  "homepage": "https://github.com/eddavis-mottmac/music_app#readme",
+  "dependencies": {
+    "babel": "^6.23.0",
+    "bootstrap": "^3.4.1",
+    "flask": "^0.2.10"
+  }
+}

@@ -2,6 +2,7 @@
 # Imports
 #----------------------------------------------------------------------------#
 
+from email.headerregistry import ParameterizedMIMEHeader
 import json
 import dateutil.parser
 import babel
@@ -12,6 +13,9 @@ import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
+from flask_migrate import Migrate
+import pandas as pd
+import numpy as np
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -19,9 +23,11 @@ from forms import *
 app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
+app.app_context().push()
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
-# TODO: connect to a local postgresql database
+# DONE: connection established to a local MS SSMS database
 
 #----------------------------------------------------------------------------#
 # Models.
@@ -38,8 +44,9 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    shows = db.relationship('Shows', backref='Venue', lazy=True)
 
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+    # DONE: implement any missing fields, as a database migration using Flask-Migrate - relationships added
 
 class Artist(db.Model):
     __tablename__ = 'Artist'
@@ -52,10 +59,19 @@ class Artist(db.Model):
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean, nullable=False, default=True)
+    shows = db.relationship('Shows', backref='Artist', lazy=True)
+    # DONE: implement any missing fields, as a database migration using Flask-Migrate - relationships added
 
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+class Shows(db.Model):
+    __tablename__ = 'Show'
 
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
+
+# DONE: Implement Show and Artist models, and complete all model relationships and properties, as a database migration. - FKs added and link provided
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -85,30 +101,45 @@ def index():
 
 @app.route('/venues')
 def venues():
-  # TODO: replace with real venues data.
-  #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
-  return render_template('pages/venues.html', areas=data);
+    # TODO: replace with real venues data.
+    #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
+    #data=[{
+    #  "city": "San Francisco",
+    #  "state": "CA",
+    #  "venues": [{
+    #    "id": 1,
+    #    "name": "The Musical Hop",
+    #    "num_upcoming_shows": 0,
+    #  }, {
+    #    "id": 3,
+    #    "name": "Park Square Live Music & Coffee",
+    #    "num_upcoming_shows": 1,
+    #  }]
+    #}, {
+    #  "city": "New York",
+    #  "state": "NY",
+    #  "venues": [{
+    #    "id": 2,
+    #    "name": "The Dueling Pianos Bar",
+    #    "num_upcoming_shows": 0,
+    #  }]
+    #}]
+    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
+    print(source_data)
+    city_list = list(source_data['city'].unique())
+    state_list = list(source_data['state'].unique())
+
+    tier1_list=[]
+    for city, state in zip(city_list, state_list):
+        df = source_data.query("city == @city")
+        df2 = df.drop(['city'], axis=1)
+        tier2_list=[]
+        for j in range(len(df2)):
+            temp = df2.iloc[j].to_dict()
+            tier2_list.append(temp)
+        tier1_list.append({"city" : city, "state": state, "venues": tier2_list})
+
+    return render_template('pages/venues.html', areas=tier1_list);
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -511,7 +542,7 @@ if not app.debug:
 
 # Default port:
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
 
 # Or specify port manually:
 '''
@@ -519,3 +550,23 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 '''
+
+#debugging function
+def sql_debug(response):
+    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
+    print(source_data)
+    city_list = list(source_data['city'].unique())
+    state_list = list(source_data['state'].unique())
+
+    tier1_list=[]
+    for city, state in zip(city_list, state_list):
+        df = source_data.query("city == @city")
+        df2 = df.drop(['city'], axis=1)
+        tier2_list=[]
+        for j in range(len(df2)):
+            temp = df2.iloc[j].to_dict()
+            tier2_list.append(temp)
+        tier1_list.append({"city" : city, "state": state, "venues": tier2_list})
+    return response
+
+app.after_request(sql_debug)
