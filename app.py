@@ -11,21 +11,25 @@ from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
+from flask_wtf import FlaskForm, Form
 from forms import *
 from flask_migrate import Migrate
 import pandas as pd
 import numpy as np
+from forms import *
+import logging
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
 app = Flask(__name__)
+app.debug=True
 moment = Moment(app)
 app.config.from_object('config')
 app.app_context().push()
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+logging.basicConfig(level=logging.INFO)
 
 # DONE: connection established to a local MS SSMS database
 
@@ -43,8 +47,26 @@ class Venue(db.Model):
     address = db.Column(db.String(120))
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
+    genres = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    website_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(500))
     shows = db.relationship('Shows', backref='Venue', lazy=True)
+
+    #def __init__(self, name, city, state, address, phone, image_link, genres, facebook_link, website_link, seeking_talent, seeking_description, shows):
+    #    self.name = name
+    #    self.city = city
+    #    self.state = state
+    #    self.address = address
+    #    self.phone = phone
+    #    self.image_link = image_link
+    #    self.genres = genres
+    #    self.facebook_link = facebook_link
+    #    self.website_link = website_link
+    #    self.seeking_talent = seeking_talent
+    #    self.seeking_description = seeking_description
+    #    self.shows = shows
 
     # DONE: implement any missing fields, as a database migration using Flask-Migrate - relationships added
 
@@ -101,7 +123,7 @@ def index():
 
 @app.route('/venues')
 def venues():
-    # TODO: replace with real venues data.
+    # DONE: replace with real venues data.
     #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
     #data=[{
     #  "city": "San Francisco",
@@ -125,7 +147,6 @@ def venues():
     #  }]
     #}]
     source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
-    print(source_data)
     city_list = list(source_data['city'].unique())
     state_list = list(source_data['state'].unique())
 
@@ -143,23 +164,44 @@ def venues():
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
-  # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
-  # seach for Hop should return "The Musical Hop".
-  # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  response={
-    "count": 1,
-    "data": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+
+    # DONE: implement search on artists with partial string search. Ensure it is case-insensitive.
+    # search for Hop should return "The Musical Hop".
+    # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+    text = request.form['search_term'].lower()
+
+    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
+
+    result = source_data[source_data['name'].str.lower().str.contains(text)]
+    
+
+
+    count=len(result)
+    tier1_list={"count": count}
+    tier2_list=[]
+
+    for i in range(len(result)):
+        temp = result.iloc[i].to_dict()
+        tier2_list.append(temp)
+    tier1_list.update({"data": tier2_list})
+    response=tier1_list
+    sql_debug(response)
+    #response={
+    #"count": 1,
+    #"data": [{
+    #    "id": 2,
+    #    "name": "The Dueling Pianos Bar",
+    #    "num_upcoming_shows": 0,
+    #}]
+    #}
+    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
+
+  source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
   data1={
     "id": 1,
     "name": "The Musical Hop",
@@ -250,15 +292,51 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
+    form_temp = VenueForm(request.form)
+    if form_temp.validate():
+        try:
+            name=request.form.get('name')
+            city=request.form.get('city')
+            state=request.form.get('state')
+            address=request.form.get('address')
+            phone=request.form.get('phone')
+            image_link=request.form.get('image_link')
+            genres=request.form.getlist('genres')
+            facebook_link=request.form.get('facebook_link')
+            website_link=request.form.get('website_link')
+            seeking_talent=request.form.get('seeking_talent')
+            seeking_talent = 1 if seeking_talent == 'y' else 0
+            print(seeking_talent)
+            seeking_description=request.form.get('seeking_description')
+            genres = ", ".join(genres)
+            
+
+            venue = Venue(name=name, city=city, state=state, address=address, phone=phone, image_link=image_link, genres=genres, facebook_link=facebook_link, website_link=website_link, seeking_talent=seeking_talent, seeking_description=seeking_description)             
+            print(venue)
+            db.session.add(venue)
+            db.session.commit()
+            flash('Venue ' + request.form['name'] + ' was successfully listed!')
+        except:
+            flash('Venue ' + request.form['name'] + ' was not successfully listed!')
+            db.session.rollback()
+        finally:
+            db.session.close()
+            return render_template('pages/home.html')
+    else:
+        flash('Venue ' + request.form['name'] + ' was not successfully listed!')
+        print("Not successfully submitted")
+        print(form_temp.errors)
+        return render_template('forms/new_venue.html', form=form_temp) 
+
+  # Done: insert form data as a new Venue record in the db, instead
+  # Done: modify data to be the data object returned from db insertion
 
   # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
+  # flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  # Done: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return render_template('pages/home.html')
+
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -552,21 +630,8 @@ if __name__ == '__main__':
 '''
 
 #debugging function
-def sql_debug(response):
-    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
-    print(source_data)
-    city_list = list(source_data['city'].unique())
-    state_list = list(source_data['state'].unique())
+def sql_debug(text):
+    print(text)
+    return text
 
-    tier1_list=[]
-    for city, state in zip(city_list, state_list):
-        df = source_data.query("city == @city")
-        df2 = df.drop(['city'], axis=1)
-        tier2_list=[]
-        for j in range(len(df2)):
-            temp = df2.iloc[j].to_dict()
-            tier2_list.append(temp)
-        tier1_list.append({"city" : city, "state": state, "venues": tier2_list})
-    return response
-
-app.after_request(sql_debug)
+#app.after_request(sql_debug)

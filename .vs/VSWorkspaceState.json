@@ -1,12 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\migrations",
-    "\\migrations\\versions",
     "\\templates",
     "\\templates\\layouts",
     "\\templates\\pages"
   ],
-  "SelectedNode": "\\templates\\pages\\search_artists.html",
   "PreviewInSolutionExplorer": false
 }
