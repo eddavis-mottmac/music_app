@@ -10,4 +10,4 @@ DEBUG = True
 
 
 # TODO IMPLEMENT DATABASE URL
-SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://@(localdb)\MSSQLLocalDB/Fyyur?trusted_connection=yes&driver=ODBC+Driver+17+for+SQL+Server'
+SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://@(localdb)\MSSQLLocalDB/MeSDO?trusted_connection=yes&driver=ODBC+Driver+17+for+SQL+Server'

@@ -1,0 +1,25 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Component Search{% endblock %}
+{% block content %}
+<div class="row">
+	<div class="col-sm-6">
+		<h1 class="monospace">
+			{{ component.name }}
+		</h1>
+		<p class="subtitle">
+			ID: {{ component.id }}
+		</p>
+        <p class="subtitle">
+			Component Type: {{ component.component_type }}
+		</p>
+        <p class="subtitle">
+			Datasheet Link: {{ component.datasheet_link }}
+		</p>
+		
+	</div>
+</div>
+
+<a href="/components/{{ component.id }}/edit"><button class="btn btn-primary btn-lg">Edit</button></a>
+
+{% endblock %}
+

@@ -15,7 +15,6 @@ from flask_wtf import FlaskForm, Form
 from forms import *
 from flask_migrate import Migrate
 import pandas as pd
-import numpy as np
 from forms import *
 import logging
 import sys
@@ -38,66 +37,14 @@ logging.basicConfig(level=logging.INFO)
 # Models.
 #----------------------------------------------------------------------------#
 
-class Venue(db.Model):
-    __tablename__ = 'Venue'
+class Component(db.Model):
+    __tablename__ = 'Components'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    genres = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean)
-    seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show', backref='Venue', lazy=True)
+    component_type = db.Column(db.String(120))
+    datasheet_link = db.Column(db.String(500))
 
-    #def __init__(self, name, city, state, address, phone, image_link, genres, facebook_link, website_link, seeking_talent, seeking_description, shows):
-    #    self.name = name
-    #    self.city = city
-    #    self.state = state
-    #    self.address = address
-    #    self.phone = phone
-    #    self.image_link = image_link
-    #    self.genres = genres
-    #    self.facebook_link = facebook_link
-    #    self.website_link = website_link
-    #    self.seeking_talent = seeking_talent
-    #    self.seeking_description = seeking_description
-    #    self.shows = shows
-
-    # DONE: implement any missing fields, as a database migration using Flask-Migrate - relationships added
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean, nullable=False, default=True)
-    seeking_description = db.Column(db.String(120))
-    shows = db.relationship('Show', backref='Artist', lazy=True)
-    # DONE: implement any missing fields, as a database migration using Flask-Migrate - relationships added
-
-class Show(db.Model):
-    __tablename__ = 'Show'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    start_time = db.Column(db.DateTime, default=datetime.utcnow) 
-    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
-
-# DONE: Implement Show and Artist models, and complete all model relationships and properties, as a database migration. - FKs added and link provided
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -122,56 +69,24 @@ def index():
   return render_template('pages/home.html')
 
 
-#  Venues
+#  Components
 #  ----------------------------------------------------------------
 
-@app.route('/venues')
-def venues():
-    # DONE: replace with real venues data.
-    #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-    #data=[{
-    #  "city": "San Francisco",
-    #  "state": "CA",
-    #  "venues": [{
-    #    "id": 1,
-    #    "name": "The Musical Hop",
-    #    "num_upcoming_shows": 0,
-    #  }, {
-    #    "id": 3,
-    #    "name": "Park Square Live Music & Coffee",
-    #    "num_upcoming_shows": 1,
-    #  }]
-    #}, {
-    #  "city": "New York",
-    #  "state": "NY",
-    #  "venues": [{
-    #    "id": 2,
-    #    "name": "The Dueling Pianos Bar",
-    #    "num_upcoming_shows": 0,
-    #  }]
-    #}]
-    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
-    city_list = list(source_data['city'].unique())
-    state_list = list(source_data['state'].unique())
+@app.route('/components')
+def components():
+    """
+    Renders the 'components.html' template with a list of all Component records
+    from the database.
 
-    tier1_list=[]
-    for city, state in zip(city_list, state_list):
-        df = source_data.query("city == @city")
-        df2 = df.drop(['city'], axis=1)
-        tier2_list=[]
-        for j in range(len(df2)):
-            temp = df2.iloc[j].to_dict()
-            tier2_list.append(temp)
-        tier1_list.append({"city" : city, "state": state, "venues": tier2_list})
-
-    return render_template('pages/venues.html', areas=tier1_list);
+    Returns:
+        str: A rendered HTML template containing a table of all Component records.
+    """
+    components = Component.query.all()
+    return render_template('pages/components.html', components=components)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
 
-    # DONE: implement search on artists with partial string search. Ensure it is case-insensitive.
-    # search for Hop should return "The Musical Hop".
-    # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
     text = request.form['search_term'].lower()
 
     source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
@@ -200,89 +115,55 @@ def search_venues():
     #}
     return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
-@app.route('/venues/<int:venue_id>')
-def show_venue(venue_id):
+@app.route('/components/<int:component_id>')
+def show_component(component_id):
   # shows the venue page with the given venue_id
   # DONE: replace with real venue data from the venues table, using venue_id
 
   # source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.filter_by(id=venue_id)])
 
-  venue = Venue.query.get(venue_id)
+  component = Component.query.get(component_id)
 
-  data={
-    "id": venue.id,
-    "name": venue.name,
-    "genres": venue.genres.split(','),
-    "address": venue.address,
-    "city": venue.city,
-    "state": venue.state,
-    "phone": venue.phone,
-    "website_link": venue.website_link,
-    "facebook_link": venue.facebook_link,
-    "seeking_talent": venue.seeking_talent,
-    "seeking_description": venue.seeking_description,
-    "image_link": venue.image_link,
-    # "past_shows": past_shows,
-    # "upcoming_shows": upcoming_shows,
-    # "past_shows_count": len(past_shows),
-    # "upcoming_shows_count": len(upcoming_shows)
-  }
-  return render_template('pages/show_venue.html', venue=data)
+  print(component)
+
+
+  return render_template('pages/show_component.html', component=component)
 
 #  Create Venue
 #  ----------------------------------------------------------------
 
-@app.route('/venues/create', methods=['GET'])
-def create_venue_form():
-  form = VenueForm()
-  return render_template('forms/new_venue.html', form=form)
+@app.route('/components/create', methods=['GET'])
+def create_component_form():
+  form = ComponentForm()
+  return render_template('forms/new_component.html', form=form)
 
-@app.route('/venues/create', methods=['POST'])
-def create_venue_submission():
-    form_temp = VenueForm(request.form)
+@app.route('/components/create', methods=['POST'])
+def create_component_submission():
+    form_temp = ComponentForm(request.form)
     if form_temp.validate():
         try:
             name=request.form.get('name')
-            city=request.form.get('city')
-            state=request.form.get('state')
-            address=request.form.get('address')
-            phone=request.form.get('phone')
-            image_link=request.form.get('image_link')
-            genres=request.form.getlist('genres')
-            facebook_link=request.form.get('facebook_link')
-            website_link=request.form.get('website_link')
-            seeking_talent=request.form.get('seeking_talent')
-            seeking_talent = 1 if seeking_talent == 'y' else 0
-            print(seeking_talent)
-            seeking_description=request.form.get('seeking_description')
-            genres = ", ".join(genres)
+            component_type=request.form.get('component_type')
+            datasheet_link=request.form.get('datasheet_link')
             
 
-            venue = Venue(name=name, city=city, state=state, address=address, phone=phone, image_link=image_link, genres=genres, facebook_link=facebook_link, website_link=website_link, seeking_talent=seeking_talent, seeking_description=seeking_description)             
-            print(venue)
-            db.session.add(venue)
+            component = Component(name=name, component_type=component_type, datasheet_link=datasheet_link)             
+            print(component)
+            db.session.add(component)
             db.session.commit()
-            flash('Venue ' + request.form['name'] + ' was successfully listed!')
+            flash('Component ' + request.form['name'] + ' was successfully listed!')
         except:
-            flash('Venue ' + request.form['name'] + ' was not successfully listed!')
+            flash('Component ' + request.form['name'] + ' was not successfully listed!')
             db.session.rollback()
         finally:
             db.session.close()
             return render_template('pages/home.html')
     else:
-        flash('Venue ' + request.form['name'] + ' was not successfully listed!')
+        flash('Component ' + request.form['name'] + ' was not successfully listed!')
         print("Not successfully submitted")
         print(form_temp.errors)
-        return render_template('forms/new_venue.html', form=form_temp) 
+        return render_template('forms/new_component.html', form=form_temp) 
 
-  # Done: insert form data as a new Venue record in the db, instead
-  # Done: modify data to be the data object returned from db insertion
-
-  # on successful db insert, flash success
-  # flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  # Done: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
 
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
@@ -438,54 +319,38 @@ def edit_artist_submission(artist_id):
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
-@app.route('/venues/<int:venue_id>/edit', methods=['GET'])
-def edit_venue(venue_id):
+@app.route('/components/<int:component_id>/edit', methods=['GET'])
+def edit_component(component_id):
 
-  venue = Venue.query.get(venue_id)
+  component = Component.query.get(component_id)
 
-  form = VenueForm(obj=venue)
 
-  # Set default selected genres in the genres field
-  selected_genres = [genre.strip() for genre in venue.genres.split(',')]
-  form.genres.data = selected_genres
+  form = ComponentForm(obj=component)
 
   # Populate other fields with data
-  form.name.data = venue.name
-  form.city.data = venue.city
-  form.state.data = venue.state
-  form.phone.data = venue.phone
-  form.image_link.data = venue.image_link
-  form.facebook_link.data = venue.facebook_link
-  form.website_link.data = venue.website_link
-  form.seeking_talent.data = venue.seeking_talent
-  form.seeking_description.data = venue.seeking_description
+  form.name.data = component.name
+  form.component_type.data = component.component_type
+  form.datasheet_link.data = component.datasheet_link
 
-  # DONE: populate form with values from venue with ID <venue_id>
-  return render_template('forms/edit_venue.html', form=form, venue=venue)
+  return render_template('forms/edit_component.html', form=form, component=component)
 
-@app.route('/venues/<int:venue_id>/edit', methods=['POST'])
-def edit_venue_submission(venue_id):
+@app.route('/components/<int:component_id>/edit', methods=['POST'])
+def edit_component_submission(component_id):
   # DONE: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
 
-  venue = Venue.query.get(venue_id)
+  component = Component.query.get(component_id)
 
   # Update the attributes with the new values from the form
-  venue.name = request.form['name']
-  venue.city = request.form['city']
-  venue.state = request.form['state']
-  venue.phone = request.form['phone']
-  venue.genres = ','.join(request.form.getlist('genres'))
-  venue.facebook_link = request.form['facebook_link']
-  venue.image_link = request.form['image_link']
-  venue.website_link = request.form['website_link']
-  venue.seeking_talent = True if request.form.get('seeking_talent') == 'y' else False
-  venue.seeking_description = request.form['seeking_description']
+  component.name = request.form['name']
+  component.component_type = request.form['component_type']
+  component.datasheet_link = request.form['datasheet_link']
+
 
   # Commit the changes to the database
   db.session.commit()
 
-  return redirect(url_for('show_venue', venue_id=venue_id))
+  return redirect(url_for('show_component', component_id=component_id))
 
 #  Create Artist
 #  ----------------------------------------------------------------

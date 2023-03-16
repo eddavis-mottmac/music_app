@@ -53,6 +53,14 @@ class States(Enum):
     WYOMING = "WY"
 
 
+class ComponentTypes(Enum):
+    Room = "Room"
+    Electrical_Equipment = "Electrical Equipment"
+    Mechanical_Equipment = "Mechanical Equipment"
+    Drainage_Equipment = "Drainage/Plumbing Equipment"
+    Railway_Systems = "Railway Systems"
+    OTHER = "Other"
+
 class Genres(Enum):
     ALTERNATIVE = "Alternative"
     BLUES = "Blues"
