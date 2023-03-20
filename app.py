@@ -3,7 +3,6 @@
 #----------------------------------------------------------------------------#
 
 from email.headerregistry import ParameterizedMIMEHeader
-import json
 import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
@@ -18,6 +17,8 @@ import pandas as pd
 from forms import *
 import logging
 import sys
+from models import *
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -27,25 +28,11 @@ app.debug=True
 moment = Moment(app)
 app.config.from_object('config')
 app.app_context().push()
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 logging.basicConfig(level=logging.INFO)
 
 # DONE: connection established to a local MS SSMS database
-
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Component(db.Model):
-    __tablename__ = 'Components'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    component_type = db.Column(db.String(120))
-    datasheet_link = db.Column(db.String(500))
-
-
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
