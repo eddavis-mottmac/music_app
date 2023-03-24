@@ -2,15 +2,12 @@
 # Imports
 #----------------------------------------------------------------------------#
 
-from email.headerregistry import ParameterizedMIMEHeader
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import FlaskForm, Form
 from forms import *
 from flask_migrate import Migrate
 import pandas as pd
@@ -18,7 +15,7 @@ from forms import *
 import logging
 import sys
 from models import *
-
+from database import db
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -33,6 +30,9 @@ migrate = Migrate(app, db)
 logging.basicConfig(level=logging.INFO)
 
 # DONE: connection established to a local MS SSMS database
+
+# DONE: Implement Show and Artist models, and complete all model relationships and properties, as a database migration. - FKs added and link provided
+
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -56,24 +56,35 @@ def index():
   return render_template('pages/home.html')
 
 
-#  Components
+#  Venues
 #  ----------------------------------------------------------------
 
-@app.route('/components')
-def components():
-    """
-    Renders the 'components.html' template with a list of all Component records
-    from the database.
+@app.route('/venues')
+def venues():
+    # DONE: replace with real venues data.
 
-    Returns:
-        str: A rendered HTML template containing a table of all Component records.
-    """
-    components = Component.query.all()
-    return render_template('pages/components.html', components=components)
+    source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
+    city_list = list(source_data['city'].unique())
+    state_list = list(source_data['state'].unique())
+
+    tier1_list=[]
+    for city, state in zip(city_list, state_list):
+        df = source_data.query("city == @city")
+        df2 = df.drop(['city'], axis=1)
+        tier2_list=[]
+        for j in range(len(df2)):
+            temp = df2.iloc[j].to_dict()
+            tier2_list.append(temp)
+        tier1_list.append({"city" : city, "state": state, "venues": tier2_list})
+
+    return render_template('pages/venues.html', areas=tier1_list);
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
 
+    # DONE: implement search on artists with partial string search. Ensure it is case-insensitive.
+    # search for Hop should return "The Musical Hop".
+    # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
     text = request.form['search_term'].lower()
 
     source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.all()])
@@ -92,65 +103,83 @@ def search_venues():
     tier1_list.update({"data": tier2_list})
     response=tier1_list
     sql_debug(response)
-    #response={
-    #"count": 1,
-    #"data": [{
-    #    "id": 2,
-    #    "name": "The Dueling Pianos Bar",
-    #    "num_upcoming_shows": 0,
-    #}]
-    #}
+
     return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
-@app.route('/components/<int:component_id>')
-def show_component(component_id):
+@app.route('/venues/<int:venue_id>')
+def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # DONE: replace with real venue data from the venues table, using venue_id
 
   # source_data=pd.DataFrame.from_records([vars(venue) for venue in Venue.query.filter_by(id=venue_id)])
 
-  component = Component.query.get(component_id)
+  venue = Venue.query.get(venue_id)
 
-  print(component)
+  data={
+    "id": venue.id,
+    "name": venue.name,
+    "genres": venue.genres.split(','),
+    "address": venue.address,
+    "city": venue.city,
+    "state": venue.state,
+    "phone": venue.phone,
+    "website_link": venue.website_link,
+    "facebook_link": venue.facebook_link,
+    "seeking_talent": venue.seeking_talent,
+    "seeking_description": venue.seeking_description,
+    "image_link": venue.image_link,
 
-
-  return render_template('pages/show_component.html', component=component)
+  }
+  return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
 #  ----------------------------------------------------------------
 
-@app.route('/components/create', methods=['GET'])
-def create_component_form():
-  form = ComponentForm()
-  return render_template('forms/new_component.html', form=form)
+@app.route('/venues/create', methods=['GET'])
+def create_venue_form():
+  form = VenueForm()
+  return render_template('forms/new_venue.html', form=form)
 
-@app.route('/components/create', methods=['POST'])
-def create_component_submission():
-    form_temp = ComponentForm(request.form)
+@app.route('/venues/create', methods=['POST'])
+def create_venue_submission():
+    form_temp = VenueForm(request.form)
     if form_temp.validate():
         try:
             name=request.form.get('name')
-            component_type=request.form.get('component_type')
-            datasheet_link=request.form.get('datasheet_link')
+            city=request.form.get('city')
+            state=request.form.get('state')
+            address=request.form.get('address')
+            phone=request.form.get('phone')
+            image_link=request.form.get('image_link')
+            genres=request.form.getlist('genres')
+            facebook_link=request.form.get('facebook_link')
+            website_link=request.form.get('website_link')
+            seeking_talent=request.form.get('seeking_talent')
+            seeking_talent = 1 if seeking_talent == 'y' else 0
+            print(seeking_talent)
+            seeking_description=request.form.get('seeking_description')
+            genres = ", ".join(genres)
             
 
-            component = Component(name=name, component_type=component_type, datasheet_link=datasheet_link)             
-            print(component)
-            db.session.add(component)
+            venue = Venue(name=name, city=city, state=state, address=address, phone=phone, image_link=image_link, genres=genres, facebook_link=facebook_link, website_link=website_link, seeking_talent=seeking_talent, seeking_description=seeking_description)             
+            print(venue)
+            db.session.add(venue)
             db.session.commit()
-            flash('Component ' + request.form['name'] + ' was successfully listed!')
+            flash('Venue ' + request.form['name'] + ' was successfully listed!')
         except:
-            flash('Component ' + request.form['name'] + ' was not successfully listed!')
+            flash('Venue ' + request.form['name'] + ' was not successfully listed!')
             db.session.rollback()
         finally:
             db.session.close()
             return render_template('pages/home.html')
     else:
-        flash('Component ' + request.form['name'] + ' was not successfully listed!')
+        flash('Venue ' + request.form['name'] + ' was not successfully listed!')
         print("Not successfully submitted")
         print(form_temp.errors)
-        return render_template('forms/new_component.html', form=form_temp) 
+        return render_template('forms/new_venue.html', form=form_temp) 
 
+  # Done: insert form data as a new Venue record in the db, instead
+  # Done: modify data to be the data object returned from db insertion
 
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
@@ -306,38 +335,54 @@ def edit_artist_submission(artist_id):
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
-@app.route('/components/<int:component_id>/edit', methods=['GET'])
-def edit_component(component_id):
+@app.route('/venues/<int:venue_id>/edit', methods=['GET'])
+def edit_venue(venue_id):
 
-  component = Component.query.get(component_id)
+  venue = Venue.query.get(venue_id)
 
+  form = VenueForm(obj=venue)
 
-  form = ComponentForm(obj=component)
+  # Set default selected genres in the genres field
+  selected_genres = [genre.strip() for genre in venue.genres.split(',')]
+  form.genres.data = selected_genres
 
   # Populate other fields with data
-  form.name.data = component.name
-  form.component_type.data = component.component_type
-  form.datasheet_link.data = component.datasheet_link
+  form.name.data = venue.name
+  form.city.data = venue.city
+  form.state.data = venue.state
+  form.phone.data = venue.phone
+  form.image_link.data = venue.image_link
+  form.facebook_link.data = venue.facebook_link
+  form.website_link.data = venue.website_link
+  form.seeking_talent.data = venue.seeking_talent
+  form.seeking_description.data = venue.seeking_description
 
-  return render_template('forms/edit_component.html', form=form, component=component)
+  # DONE: populate form with values from venue with ID <venue_id>
+  return render_template('forms/edit_venue.html', form=form, venue=venue)
 
-@app.route('/components/<int:component_id>/edit', methods=['POST'])
-def edit_component_submission(component_id):
+@app.route('/venues/<int:venue_id>/edit', methods=['POST'])
+def edit_venue_submission(venue_id):
   # DONE: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
 
-  component = Component.query.get(component_id)
+  venue = Venue.query.get(venue_id)
 
   # Update the attributes with the new values from the form
-  component.name = request.form['name']
-  component.component_type = request.form['component_type']
-  component.datasheet_link = request.form['datasheet_link']
-
+  venue.name = request.form['name']
+  venue.city = request.form['city']
+  venue.state = request.form['state']
+  venue.phone = request.form['phone']
+  venue.genres = ','.join(request.form.getlist('genres'))
+  venue.facebook_link = request.form['facebook_link']
+  venue.image_link = request.form['image_link']
+  venue.website_link = request.form['website_link']
+  venue.seeking_talent = True if request.form.get('seeking_talent') == 'y' else False
+  venue.seeking_description = request.form['seeking_description']
 
   # Commit the changes to the database
   db.session.commit()
 
-  return redirect(url_for('show_component', component_id=component_id))
+  return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
 #  ----------------------------------------------------------------
@@ -424,43 +469,6 @@ def shows():
 
   return render_template('pages/shows.html', shows=shows_data)
 
-  # data=[{
-  #   "venue_id": 1,
-  #   "venue_name": "The Musical Hop",
-  #   "artist_id": 4,
-  #   "artist_name": "Guns N Petals",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-  #   "start_time": "2019-05-21T21:30:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 5,
-  #   "artist_name": "Matt Quevedo",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-  #   "start_time": "2019-06-15T23:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-01T20:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-08T20:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-15T20:00:00.000Z"
-  # }]
-  # return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')
 def create_shows():

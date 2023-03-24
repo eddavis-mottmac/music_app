@@ -1,18 +1,9 @@
-from flask import Flask
-from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
-import logging
 from forms import *
-from flask_migrate import Migrate
-from forms import *
-import logging
+from database import db
 
-# DONE: connection established to a local MS SSMS database
-db = SQLAlchemy()
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
-
 class Venue(db.Model):
     __tablename__ = 'Venue'
 

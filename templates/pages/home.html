@@ -1,13 +1,13 @@
 {% extends 'layouts/main.html' %}
-{% block title %}MeSDO{% endblock %}
+{% block title %}Fyyur{% endblock %}
 {% block content %}
 <div class="row">
 	<div class="col-sm-6">
-		<h1>Metro Station Design Optimisation 🚇</h1>
-		<p class="lead">Platform for coordination and exchange of Metro Station Design Data.</p>
+		<h1>Fyyur 🔥</h1>
+		<p class="lead">Where musical artists meet musical venues.</p>
 		<h3>
-			<a href="/components"><button class="btn btn-primary btn-lg">Find a component</button></a>
-			<a href="/components/create"><button class="btn btn-default btn-lg">Post a component</button></a>
+			<a href="/venues"><button class="btn btn-primary btn-lg">Find a venue</button></a>
+			<a href="/venues/create"><button class="btn btn-default btn-lg">Post a venue</button></a>
 		</h3>
 		<h3>
 			<a href="/artists"><button class="btn btn-primary btn-lg">Find an artist</button></a>
@@ -19,7 +19,7 @@
 		</h3>
 	</div>
 	<div class="col-sm-6 hidden-sm hidden-xs">
-		<img id="front-splash" src="{{ url_for('static',filename='img/toronto_metro.jpg') }}" alt="Front Photo of Toronto Metro Station" />
+		<img id="front-splash" src="{{ url_for('static',filename='img/front-splash.jpg') }}" alt="Front Photo of Musical Band" />
 	</div>
 </div>
 {% endblock %}
